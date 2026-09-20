@@ -1,0 +1,13 @@
+{
+  "_comment": "Written 2026-09-19 BEFORE any run on these documents. Three synthetic quarterly updates from one fictional company. Each entry names two distinctive substrings, one from each document's source sentence. 'contradictions' are genuine cross-document conflicts that must stay flagged as contradictions; 'superseded' are legitimate quarter-over-quarter changes that must NOT be reported as contradictions (if flagged at all, they should be 'possibly_superseded'). Prediction written with the rule, before the run: C2 (a timeless fact, no period in either claim) will be WRONGLY downgraded to possibly_superseded by the document-period rule.",
+  "documents": ["q1_2026_update.md", "q2_2026_update.md", "q3_2026_update.md"],
+  "contradictions": {
+    "C1_restated_q1_revenue": ["First-quarter revenue was 120 million dollars", "Revenue in the first quarter was 104 million dollars"],
+    "C2_dividend_history": ["Veltris has never paid a dividend to shareholders", "Veltris has paid a quarterly dividend to shareholders every quarter since 2019"]
+  },
+  "superseded": {
+    "S1_headcount_q1_q2": ["The company ended the quarter with 1,200 employees", "The company ended the quarter with 1,350 employees"],
+    "S2_gross_margin_q2_q3": ["Gross margin was 41 percent in the quarter", "Gross margin was 44 percent in the quarter"]
+  },
+  "not_labelled": "Other quarter-over-quarter differences (operating expenses, cash, delivery time, revenue of each quarter) are also legitimate updates; any flag on them counts as a false flag unless it is downgraded to possibly_superseded."
+}

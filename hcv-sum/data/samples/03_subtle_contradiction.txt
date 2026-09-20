@@ -1,0 +1,17 @@
+Operator: Good afternoon, and welcome to the Helix Cloud Systems third quarter 2026 earnings conference call. At this time all participants are in a listen-only mode. I would now like to turn the call over to Priya Raman, head of investor relations. Please go ahead.
+
+Priya Raman, Investor Relations: Thank you, operator. Joining me today are Daniel Okafor, our chief executive officer, and Mei Lin Zhou, our chief financial officer. Before we begin, please note that today's remarks include forward-looking statements that are subject to risks and uncertainties. A reconciliation of non-GAAP measures is available in our earnings release. With that, I will hand it over to Daniel.
+
+Daniel Okafor, Chief Executive Officer: Thanks, Priya, and thanks to everyone for joining. The biggest milestone this quarter was the completion of our platform migration. Every enterprise customer is now running on the new Helix Core platform, and we have shut down the legacy hosting environment for good. That migration took two years and touched more than nine hundred enterprise accounts. Customers on Helix Core are seeing page-load times roughly forty percent faster than before. Support tickets related to outages dropped by a third compared with the second quarter.
+
+Daniel Okafor, Chief Executive Officer: On the product side, we launched Helix Insight, our analytics add-on, in August. More than one hundred and twenty customers signed up during the first six weeks. Early users are mainly retailers who want to connect store-level sales data with their online traffic. We plan to add forecasting features to Insight early next year. We also opened a new data centre region in Frankfurt to serve customers with European data-residency requirements.
+
+Mei Lin Zhou, Chief Financial Officer: Thank you, Daniel. Total revenue for the quarter was 186 million dollars, up 14 percent year over year. Subscription revenue grew 17 percent and now represents 89 percent of total revenue. Gross margin was 71 percent, down one point from last quarter. The margin decline mainly reflects the cost of running two hosting environments in parallel, because roughly sixty enterprise accounts are still being served from the legacy environment while their data transfers are completed. We expect those dual-running costs to end in the first quarter of next year.
+
+Mei Lin Zhou, Chief Financial Officer: Operating expenses were 104 million dollars, including 9 million dollars of one-time costs for the Frankfurt region. We ended the quarter with 540 million dollars in cash and no debt. For the fourth quarter, we expect revenue between 192 and 196 million dollars and a gross margin of around 72 percent. For the full year, we are raising our free cash flow guidance to between 88 and 92 million dollars.
+
+Operator: Thank you. We will now begin the question-and-answer session. Our first question comes from Aaron Feld at Brookline Securities.
+
+Aaron Feld, Brookline Securities: Thanks for taking my question. Can you talk about hiring plans for next year, especially in sales?
+
+Daniel Okafor, Chief Executive Officer: Sure. We plan to grow the sales team by about fifteen percent, with most new hires focused on mid-market customers in Europe. Engineering headcount will stay roughly flat because the migration team is moving onto product work. We are also expanding our partner program so that systems integrators can resell Helix Insight.

@@ -1,0 +1,31 @@
+MASTER SERVICES AGREEMENT
+
+This Master Services Agreement is entered into by Brightline Logistics Ltd. ("Customer") and Coreshift Software GmbH ("Provider"). The parties agree to the terms set out below.
+
+1. DEFINITIONS
+
+"Effective Date" means January 1, 2026. "Services" means the hosted fleet-management software and related support described in Schedule A. "Fees" means the amounts payable by Customer under Schedule B. "Confidential Information" means any non-public information disclosed by one party to the other in connection with this Agreement.
+
+2. TERM AND RENEWAL
+
+This Agreement commences on the Effective Date and continues for an initial term of twenty-four (24) months. After the initial term, the Agreement renews automatically for successive twelve-month renewal terms unless either party gives written notice of non-renewal at least ninety days before the end of the current term. Fees for any renewal term may be increased by no more than five percent over the fees for the preceding term.
+
+3. SERVICES AND SUPPORT
+
+Provider will make the Services available at least 99.5 percent of the time in each calendar month, excluding scheduled maintenance. Provider will respond to critical support requests within one hour and to all other support requests within one business day. If Provider misses the availability commitment in any month, Customer is entitled to a service credit of ten percent of the monthly Fees for that month.
+
+4. FEES AND PAYMENT
+
+Customer will pay the Fees annually in advance. Invoices are due within thirty days of receipt. Late payments bear interest at one percent per month. Provider may suspend the Services if any undisputed invoice remains unpaid for more than sixty days after written notice.
+
+5. LIMITATION OF LIABILITY
+
+Except for breaches of confidentiality, each party's total aggregate liability under this Agreement shall not exceed the Fees paid by Customer in the twelve (12) months preceding the event giving rise to the claim. Neither party is liable for indirect, incidental or consequential damages, including lost profits.
+
+6. CONFIDENTIALITY
+
+Each party will protect the other party's Confidential Information using at least the same degree of care it uses for its own confidential information, and no less than reasonable care. These obligations survive for five years after this Agreement ends.
+
+7. TERMINATION
+
+Either party may terminate this Agreement for material breach if the breach is not cured within thirty days of written notice. Unless renewed, this Agreement expires at the end of the initial term on December 31, 2026. On termination or expiry, Provider will make Customer's data available for export for sixty days and will then delete it. Provider's total liability for all claims arising from termination shall not exceed the Fees paid by Customer in the six (6) months preceding the termination.

@@ -1,0 +1,47 @@
+{
+  "_comment": "Machine-readable version of GROUND_TRUTH.md. Each contradiction is two distinctive substrings, one from each conflicting SOURCE sentence. Written before the first run.",
+  "01_planted_contradiction": {
+    "contradictions": [
+      [
+        "backlog orders went unfilled and industrial sensor revenue fell 18%",
+        "unrelated to the Monterrey shutdown"
+      ]
+    ]
+  },
+  "02_no_contradiction": {
+    "contradictions": []
+  },
+  "03_subtle_contradiction": {
+    "contradictions": [
+      [
+        "Every enterprise customer is now running on the new Helix Core platform",
+        "roughly sixty enterprise accounts are still being served from the legacy environment"
+      ]
+    ]
+  },
+  "04_contract_term": {
+    "contradictions": [
+      [
+        "initial term of twenty-four (24) months",
+        "expires at the end of the initial term on December 31, 2026"
+      ]
+    ]
+  },
+  "05_medium_paper_graphfault": {
+    "_comment": "Document supplied by the user on 2026-09-19 without ground truth. Labelled by Claude from a full read, BEFORE any pipeline run on it; to be confirmed by the user. Excluded as ambiguous: abstract 'reducing the cold-start data requirement by roughly sixty percent' vs 5.3 'only twenty percent of the target-domain training data ... ninety-one percent' (derived arithmetic, not a direct conflict).",
+    "contradictions": [
+      [
+        "The automotive dataset spans eighteen months",
+        "automotive dataset, spanning twenty-four months"
+      ],
+      [
+        "transfer effectively across plants with different equipment vendors",
+        "only evaluated between plants using similar underlying equipment vendors"
+      ],
+      [
+        "despite differing equipment vendors and process types",
+        "only evaluated between plants using similar underlying equipment vendors"
+      ]
+    ]
+  }
+}

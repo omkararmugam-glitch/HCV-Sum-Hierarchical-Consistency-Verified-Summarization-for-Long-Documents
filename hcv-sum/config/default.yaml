@@ -1,0 +1,267 @@
+# =============================================================================
+# HCV-Sum configuration -- the SINGLE source of truth for model names and
+# thresholds. The code has no fallback defaults: every key below must exist.
+# Override any value from the CLI with:  --set section.key=value
+# =============================================================================
+
+models:
+  embedder: sentence-transformers/all-MiniLM-L6-v2   # 22M params
+  # nli was cross-encoder/nli-deberta-v3-small (~140M). Replaced after run 1: it flagged 22 source pairs
+  # in sample 01 (1 true) and 45 in the contradiction-free sample 02. Chosen on data/probes (not the samples):
+  # see scripts/eval_nli_probe.py. Trained on MNLI+FEVER+ANLI, which makes it less prone to calling
+  # unrelated sentences contradictory.
+  nli: MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli  # ~184M params, 3-way NLI
+  summarizer: sshleifer/distilbart-cnn-12-6          # ~306M params, CNN/DM fine-tuned
+  # Stage 4 (abstractive merge) model. Empty = the same model as `summarizer`. An instruction-tuned model
+  # (e.g. google/flan-t5-base) can follow merging.merge_prompt: instruct; DistilBART cannot. Tested with
+  # flan-t5-base: no reliable coverage gain and more merge-introduced contradictions -- keep empty (FINDINGS 15).
+  merge_summarizer: ""
+  device: cpu
+  batch_size: 8               # was 16; measured 29.6 vs 32.4 ms per NLI pair on this CPU, identical scores
+  torch_threads: 0            # 0 = let torch decide
+
+# ---------------------------------------------------------------- Stage 1 ----
+segmentation:
+  use_structure: true         # prefer headings when the document has them
+  min_headings: 2             # fewer detected headings => treat as unstructured
+  max_heading_words: 12       # longer lines are never headings
+  detect_markdown: true       # "# Title", "## Title"
+  detect_numbered: true       # "3. Term and Renewal", "Section 4", "Article II"
+  detect_allcaps: true        # "TERM AND TERMINATION"
+  # --- embedding fallback (TextTiling-style over sentence embeddings) ---
+  window: 3                   # sentences averaged on each side of a gap
+  depth_std_factor: 0.5       # boundary if depth >= mean(depth) + factor*std(depth)
+  min_depth: 0.05             # ...and depth is at least this (absolute floor)
+  min_segment_sentences: 4    # no fallback segment shorter than this
+  max_section_tokens: 900     # oversize sections are split again at their deepest semantic valley
+  # SAFETY CEILING on sections from the embedding fallback (headed documents are split on their headings
+  # and only split further when a section exceeds max_section_tokens). When n_sentences / max_sections
+  # exceeds min_segment_sentences, the minimum segment length grows instead, i.e. fewer, longer sections.
+  # Was 250: on a 500-page document (~15-25k sentences) that forced 60-100-sentence segments, far over
+  # max_section_tokens, so nearly every section needed an emergency split. At 2000 the ceiling only binds
+  # above 8000 sentences, and even at 25k sentences the minimum segment is 13 sentences (~350 tokens).
+  # Cost: ~2 s of Stage 2 per section on CPU, so 2000 sections is ~70 min of Stage 2. The pre-flight
+  # check (hcv-sum --preflight) reports whether this binds before anything runs. 0 = no ceiling.
+  # Unchanged for any document under 1000 sentences (all samples): the minimum stays 4 either way.
+  max_sections: 2000
+
+# ---------------------------------------------------------------- Stage 2 ----
+summarization:
+  context_mode: append        # none | append | instruct   (instruct is for instruction-tuned models, e.g. flan-t5)
+  instruct_prompt: "Summarize the SECTION. The BACKGROUND comes from other parts of the same document and is only there to help you interpret the section correctly; do not summarize the background."
+  retrieval_scoring: max      # max | mean  (how a candidate sentence is scored against the section's sentences)
+  context_top_k: 3
+  context_min_similarity: 0.35
+  max_input_tokens: 1024
+  max_context_tokens: 200     # context is truncated first; section text is only truncated if it alone exceeds the budget
+  passthrough_tokens: 45      # sections this short are used verbatim (abstracting 1-2 sentences mostly invents content)
+  max_length_ratio: 0.6       # max_new_tokens <= ratio * section tokens
+  min_new_tokens: 20
+  max_new_tokens: 110
+  num_beams: 4
+  no_repeat_ngram_size: 3
+  length_penalty: 1.0
+  leak_margin: 0.05           # summary sentence counts as "context leak" if it matches context better than section by this margin
+  drop_context_leaks: true    # remove leaked sentences from the section summary (context is support, not content)
+  batch_size: 4               # sections generated per summarizer call; ~2x faster on CPU, same text
+  # Stage 3a can only find a contradiction if BOTH sides survive summarization. Sentences that other
+  # sections retrieved as context are exactly the cross-section-relevant ones, so when compression
+  # drops them they are re-attached verbatim. Costs longer, more extractive section summaries.
+  protect_cross_referenced: true
+  # DistilBART (CNN/DailyMail-tuned) rewrites transcript speech in news style and invents speaker tags
+  # ("..., he says.", "Chairwoman says ...", "President Obama says" -- Obama is not in the document):
+  # 18 of 336 transcript summary sentences, 0 in the other three real documents. A tag is removed only
+  # if its text is absent from the section source and its subject looks like a person; each removal is
+  # listed in the section's notes. The claim itself is kept and checked by Stages 3 and 5.
+  strip_invented_attribution: true
+  protection_coverage_similarity: 0.70   # a generated sentence this close already covers the source one
+
+# ---------------------------------------------------------------- Stage 3 ----
+contradiction:
+  enabled: true
+  pair_min_similarity: 0.20   # cosine prefilter on sibling sentence pairs (0 = check all pairs)
+  # Scale controls. Without these, Stage 3 is O(n^2) in claims (3a) and claims x source sentences
+  # (3b): a 200-section document would need ~90k NLI calls for 3a alone (~25 min on this CPU).
+  # candidate_top_k keeps only each claim's k most similar cross-section candidates; max_pairs is a
+  # hard ceiling, highest-similarity pairs first. Both skip counts are reported in the run stats.
+  # TRADE-OFF: a contradiction whose partner is not among a claim's k nearest neighbours is never
+  # looked for. In all three planted contradictions the true partner ranked #1 by cosine, so k=30 is
+  # generous -- but that is 3 data points, and an adversarial document could hide a partner further down.
+  candidate_top_k: 30         # 0 = unlimited (exact, O(n^2))
+  max_pairs: 40000            # 0 = unlimited; 40000 pairs ~= 80000 NLI calls ~= 23 min on this CPU
+  # Resolving a flagged pair needs NLI support scoring for both claims, so resolution cost scales
+  # with the NUMBER OF FLAGS. On a repetitive 15-page benchmark the model flagged ~1650 pairs and
+  # resolution took more NLI calls than detection. Beyond this budget, pairs are reported as
+  # "unscored": still flagged, nothing removed from the summary, only the decision is skipped.
+  max_resolutions: 200        # 0 = unlimited. Floor of the resolution budget, see next line.
+  # Budget = max(max_resolutions, max_resolutions_per_section x sections): 200 up to 100 sections, then
+  # grows with the document (a 1,000-section document gets 2,000). With action=flag, running out of
+  # budget only leaves a flag without its resolution label; nothing is removed either way.
+  max_resolutions_per_section: 2
+  # Hard ceiling on pairs compared by the opt-in source diagnostic (--diagnose-sources), which compares
+  # raw source sentences and is the most expensive check. Same value as max_pairs, so behaviour is
+  # unchanged; set it separately for large documents. A warning is logged and the run-limits report
+  # says so whenever it is hit.
+  diagnostic_max_pairs: 40000
+  # Above this many (rows x columns) candidate pairs, Stage 3 selects candidates block by block instead
+  # of building the full similarity matrix and candidate lists (src/hcv_sum/pair_selection.py). The
+  # dense path needs ~4 bytes per pair for the matrix plus far more for Python lists: fine at 4 million,
+  # fatal at the ~600 million pairs of a 500-page source diagnostic. 0 = always dense.
+  dense_pair_limit: 4000000
+  # Optional second pre-filter: only compare pairs that share an entity-like token (name, acronym,
+  # figure). MEASURED: it cuts NLI pair scoring by ~60% on our samples but drops sample 03's planted
+  # contradiction, because the contradicting sentence is all lower case with spelled-out numbers and
+  # so has no entity tokens at all. Catch rate 2/3 -> 1/3. Off by default for that reason.
+  require_shared_entity: false
+  # Topic-overlap gate: only compare pairs sharing at least one content word (non-stopword, crudely
+  # de-pluralised). Unlike the entity gate it keeps ordinary nouns ("labor market"). Aimed at the
+  # dominant false flag on real documents: same subject, different activity ("We conduct an
+  # experiment..." vs "We construct the benchmark..."). See FINDINGS.md section 11.
+  require_shared_content_word: false
+  # Non-claim filter, second half: a fragment with neither a verb nor a number asserts nothing
+  # ("Jeanna Smialek, New York Times." -- 65 of the transcript's 467 false flags in FINDINGS 10.5).
+  # Uses nltk's POS tagger. Verbless facts with a number ("Revenue up 12%") are kept.
+  require_verb_or_number: true
+  # Strip reporting frames ("We also note that", "We find that", "Our results show that", ...) from both
+  # claims before NLI, as speaker labels already are. As the hypothesis, a framed claim collapsed
+  # P(contradiction) to 0.005-0.63 on four measured pairs (FINDINGS 12.1). Belief hedges ("we believe",
+  # "we expect", "results suggest") are NOT stripped. Affects only the text the NLI model scores.
+  strip_reporting_frames: true
+  # Strip "Name, Title, said that" frames before NLI. Only produced by preprocessing.dialogue_to_description,
+  # which switches this on automatically for its run; off otherwise.
+  strip_attribution_frames: false
+  # ...applied only to sentences SHORTER than this many words. Measured on the 100-pair set: without
+  # the limit the tagger dropped two real claims ("This paper studies the impact of..." read as a
+  # noun phrase; an ALL-CAPS clause). A 10+ word sentence with no verb found is a tagging error far
+  # more often than a fragment; reporter introductions are 4-8 words.
+  verbless_fragment_max_words: 10
+  # Skip pairs where either sentence is framed as a comparison ("the baseline is...", "unlike...",
+  # "compared with...", "faster than..."). Those describe two different things on purpose, and the
+  # NLI model reads them as conflicting because it assumes both sentences share one context (the
+  # "reference determinacy" failure, Chen et al. 2025). This is a NARROW HEURISTIC for one surface
+  # cue of that failure, not a fix for it: mismatches with no comparison word get through
+  # ("five retrieved notes" vs "five random seeds"). Measured: on the 4 samples -5 false positives
+  # and no lost true positives; on 1,143 RefNLI pairs -7 of 282 false flags and -1 true
+  # contradiction, i.e. close to no effect at scale. See FINDINGS.md sections 9.4 and 9.5.
+  # Was true. Switched off after the real-document evaluation: 0 false flags removed and 1 true
+  # contradiction (P=0.99) lost on the 100-pair set; -7 of 282 false flags on RefNLI (FINDINGS 10.3).
+  skip_comparative_framing: false
+  threshold: 0.50             # P(contradiction) needed to flag a pair
+  direction_aggregation: mean # max | min | mean over the two NLI directions (contradiction is symmetric)
+  resolution_margin: 0.15     # support difference needed to pick a winner; otherwise "unresolved"
+  support_top_k: 3            # own-section source sentences considered as premises
+  support_window: 2           # also use windows of up to N consecutive source sentences as premises
+  # Was remove. On the four real documents resolution deleted 18 claims and only 4 deletions were
+  # justified: every removal started from a false flag (FINDINGS 10.5). flag keeps both claims and
+  # marks them DISPUTED in the evidence panel; the resolution decision is still reported.
+  action: flag                # remove | flag   (what happens to the losing claim)
+  min_claim_words: 4          # skip non-claims (pleasantries) with fewer content words, after stripping speaker labels
+  check_sibling_sources: true # one-sided check: summary claims vs SOURCE sentences of sibling sections
+  sibling_source_skip_similarity: 0.90  # skip sibling source sentences that survived ~verbatim into their own summary
+
+# ---------------------------------------------------------------- Stage 4 ----
+merging:
+  # mode was 'abstractive'. Changed to 'extractive' after measuring on the samples (see FINDINGS.md):
+  # DistilBART's lead bias made abstractive fusion cite only 2-3 of 5-8 sections, i.e. it silently
+  # dropped the later half of every document (and a fan-in of 2 was worse, adding a hallucination).
+  # Extractive keeps every section's corrected claims, in order, and is ~500x faster on CPU.
+  mode: extractive            # abstractive | extractive
+  dedup_similarity: 0.85      # drop a sentence this similar to an earlier kept one
+  max_input_tokens: 1024
+  max_length_ratio: 0.75
+  min_length_ratio: 0.3
+  min_new_tokens: 40
+  max_new_tokens: 220
+  max_rounds: 6
+  # Recursive batched merge (abstractive mode): at most this many blocks are fused per summarizer
+  # call, then the outputs are merged again until one remains. 0 = fuse as many as fit the input
+  # budget, i.e. a single flat pass on documents that fit. Measured on the samples: a fan-in of 2
+  # reduced section coverage (3/5 -> 3/5 but shorter, and one hallucination), so 5 is the default
+  # compromise -- big enough to keep coverage, small enough that a 400-section document merges in
+  # rounds of 5 rather than one 400-block pass.
+  max_group_sections: 5
+  # Abstractive only: after each merge round, re-add the most central sentence of any input block the
+  # round's output no longer covers (no output sentence with cosine >= coverage_guard_similarity to any
+  # of the block's sentences). Counters DistilBART dropping later blocks; costs length. Off by default.
+  coverage_guard: false
+  coverage_guard_similarity: 0.6
+  # Extractive only: keep at most this many sentences per section (the most central ones, in document
+  # order). 0 = keep every corrected summary sentence (the behaviour on all small samples).
+  extractive_max_per_section: 0
+  # Abstractive only: give the merger relevant SOURCE sentences alongside the blocks it fuses, after
+  # Ou & Lapata (2025), who add source context at the merge step to curb hallucination and loss.
+  # Retrieval is per block (each block's own top-k source sentences above the floor), capped at
+  # context_max_tokens; the group budget shrinks by that much when on. Measured in FINDINGS 14: no coverage gain with DistilBART; leave off.
+  context_anchoring: false
+  context_top_k_per_block: 2
+  context_min_similarity: 0.35      # same floor as Stage 2's context retrieval
+  context_max_tokens: 200           # same cap as Stage 2's context (summarization.max_context_tokens)
+  # How the abstractive merger is addressed. none = the blocks (and any context) as plain text, for
+  # DistilBART-style models. instruct = an explicit instruction, for an instruction-tuned merge model
+  # (models.merge_summarizer); {summaries} and {context} are filled in, and merge_instruct_context is
+  # included only when context_anchoring provides context. Measured in FINDINGS 15.
+  merge_prompt: none
+  # The context goes LAST, after the summaries: if an input ever exceeds the model's limit, the tokenizer
+  # truncates the end, so the context is cut before any summary text.
+  merge_instruct_prompt: "Merge these summaries of sections of one document into a single summary. Keep every distinct fact from every summary.{context_note}\n\nSUMMARIES: {summaries}{context_block}"
+  merge_instruct_context: " The CONTEXT sentences come from elsewhere in the same document: use them to check facts, so that the merged summary does not contradict them and does not re-invent details they already state. Do not summarize the context itself."
+  # After each merge round, check for contradictions BETWEEN the blocks that round produced. These
+  # can only be created BY the merger (leaf conflicts are already resolved in Stage 3), and they are
+  # reported, never resolved -- a merged block has no single source section to score support against.
+  check_between_rounds: true
+  resurrection_similarity: 0.75   # final sentence this similar to a rejected claim...
+  resurrection_entailment: 0.50   # ...and entailed by it => "rejected claim resurrected"
+
+# ---------------------------------------------------------------- Stage 5 ----
+provenance:
+  top_k: 3                    # embedding filter: candidate source sentences per summary sentence
+  min_candidate_similarity: 0.30
+  window: 2                   # also test windows of up to N consecutive source sentences (summaries fuse sentences)
+  supported_entailment: 0.70  # >= : supported
+  weak_entailment: 0.35       # >= : weakly supported, below: unsupported
+  source_contradiction_flag: 0.60   # flag if the best candidate premise contradicts the sentence this strongly
+  link_similarity: 0.70       # tie a final sentence to a Stage-3 decision when this similar to the kept claim
+  flag_novel_tokens: true     # flag summary tokens absent from the source (catches corrupted numbers NLI accepts)
+  novel_token_min_length: 5   # ...for tokens without digits, only flag ones at least this long
+
+# ---------------------------------------------------------------- Scale ----
+# Everything here activates by document SIZE, so small documents behave exactly as before.
+scale:
+  # A document whose Stage 1 produces at least this many sections is "large": Stage 2 is checkpointed
+  # (checkpoint: auto), progress lines go to stderr, and Stage 4 uses large_document_merge_mode.
+  # 40 is above every small sample (<= 10 sections) and the 15-page benchmark (31 sections).
+  large_document_sections: 40
+  # Merge mode for large documents. Extractive output grows linearly with the document (~5 sentences per
+  # section), which is not a summary at 500 pages; abstractive merging shortens it but DistilBART's lead
+  # bias drops sections. See SCALING.md for the measured length/coverage trade-off.
+  large_document_merge_mode: abstractive
+  checkpoint: auto              # auto (large documents only) | always | never
+  checkpoint_dir: .hcv_checkpoints   # relative to the working directory; --checkpoint-dir overrides it
+  progress_every_sections: 10   # Stage 2 progress line on stderr at least this often...
+  progress_every_pairs: 500     # ...Stage 3 progress line at least every this many compared pairs...
+  progress_every_seconds: 30    # ...or this often, whichever comes first
+  # Per-unit costs measured on this CPU, used ONLY for the pre-flight runtime estimate:
+  est_seconds_per_section: 2.1  # Stage 2 generation (FINDINGS.md section 5)
+  est_ms_per_nli_pair: 33       # DeBERTa-v3-base NLI, batch 8, real prose
+  est_claims_per_section: 4     # summary sentences per section, measured on the real documents
+
+# ------------------------------------------------------------ Preprocessing ----
+preprocessing:
+  # Rewrite speaker-labelled dialogue ("Name, Title: We plan to ...") as descriptive prose ("Name, Title,
+  # said that the company plans to ...") before segmentation. Rule-based (src/hcv_sum/dialogue.py),
+  # inspired by NexusSum's LLM-based dialogue-to-description step, not a reimplementation of it.
+  # Off by default; measured in FINDINGS 16.
+  dialogue_to_description: false
+  organisation_reference: the company   # what first-person plural ("we", "our") is rewritten to
+
+# ----------------------------------------------------------- Multi-document ----
+# Used only when several documents are given at once (hcv-sum a.md b.md ...). An unsupervised,
+# retrieval-and-centrality-based approximation inspired by the goal of Liu & Lapata (2019); NOT their
+# trained cross-document attention or salience ranker (src/hcv_sum/multidoc.py, FINDINGS 17).
+multidoc:
+  max_summary_sentences: 12   # final summary = this many most central sentences across all documents
+  salience_measure: pagerank  # pagerank | betweenness, on the kNN graph of section-summary sentences
+  salience_knn: 10
+  # Downgrade a cross-document flag to "possibly_superseded" when the documents carry different explicit
+  # period/version markers and the two claims are not about the same period (src/hcv_sum/periods.py).
+  supersede_by_period: true

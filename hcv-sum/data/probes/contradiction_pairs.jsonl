@@ -1,0 +1,38 @@
+{"a": "The bridge reopened to traffic on Monday.", "b": "The bridge remained closed to traffic on Monday.", "label": 1, "category": "explicit_negation"}
+{"a": "The merger was approved by regulators.", "b": "Regulators blocked the merger.", "label": 1, "category": "explicit_negation"}
+{"a": "The drug reduced symptoms in the trial.", "b": "The drug had no effect on symptoms in the trial.", "label": 1, "category": "explicit_negation"}
+{"a": "The software update is free for all users.", "b": "Users must pay a fee to receive the software update.", "label": 1, "category": "explicit_negation"}
+{"a": "Flight delays rose because of the air traffic controller strike.", "b": "The rise in flight delays had nothing to do with the controller strike.", "label": 1, "category": "causal_denial"}
+{"a": "Sales dropped after the recall as customers lost trust in the brand.", "b": "The drop in sales was not caused by the recall.", "label": 1, "category": "causal_denial"}
+{"a": "The outage was caused by a failed database upgrade.", "b": "The database upgrade played no role in the outage.", "label": 1, "category": "causal_denial"}
+{"a": "Budget cuts forced the company to lay off staff.", "b": "The CEO said the layoffs were unrelated to the budget cuts.", "label": 1, "category": "causal_denial"}
+{"a": "All branches were converted to the new banking system by June.", "b": "Several branches are still using the old banking system.", "label": 1, "category": "quantifier"}
+{"a": "Every employee received the annual bonus.", "b": "About two hundred employees did not receive the annual bonus.", "label": 1, "category": "quantifier"}
+{"a": "The school has eliminated its waiting list.", "b": "Forty families remain on the school's waiting list.", "label": 1, "category": "quantifier"}
+{"a": "The loan carries an annual interest rate of 4 percent.", "b": "The loan's annual interest rate is 7 percent.", "label": 1, "category": "numeric_same_quantity"}
+{"a": "The festival lasts three days.", "b": "The festival runs for a full week.", "label": 1, "category": "numeric_same_quantity"}
+{"a": "The report was published before the election.", "b": "The report was released only after the election.", "label": 1, "category": "temporal_order"}
+{"a": "The lease began in January 2024 and runs for three years.", "b": "The lease expires in January 2025.", "label": 1, "category": "arithmetic"}
+{"a": "The factory was closed for two months last winter.", "b": "The factory is now running at full capacity.", "label": 0, "category": "temporal_state_change"}
+{"a": "The road was flooded on Tuesday morning.", "b": "By Thursday the road was open again.", "label": 0, "category": "temporal_state_change"}
+{"a": "Profits in the retail division grew 12 percent.", "b": "Overall company profits fell 3 percent.", "label": 0, "category": "scope_difference"}
+{"a": "The vaccine was highly effective in adults.", "b": "The vaccine showed limited effect in young children.", "label": 0, "category": "scope_difference"}
+{"a": "Online sales doubled last year.", "b": "In-store sales declined slightly last year.", "label": 0, "category": "scope_difference"}
+{"a": "The liability cap for general claims is two million dollars.", "b": "Claims related to data breaches are capped at five hundred thousand dollars.", "label": 0, "category": "scope_difference"}
+{"a": "Model accuracy improved on the English test set.", "b": "Model accuracy did not improve on the German test set.", "label": 0, "category": "scope_difference"}
+{"a": "The new engine takes longer to manufacture.", "b": "The new engine uses less fuel than the old design.", "label": 0, "category": "tradeoff"}
+{"a": "Training the model is slower than before.", "b": "Predictions from the model are returned faster than before.", "label": 0, "category": "tradeoff"}
+{"a": "Nobody was hurt during the evacuation.", "b": "Quarterly shipments to Asia declined 9 percent.", "label": 0, "category": "unrelated_same_domain"}
+{"a": "The board approved a new dividend policy.", "b": "Warehouse rents in the region rose sharply.", "label": 0, "category": "unrelated_same_domain"}
+{"a": "The call will include forward-looking statements.", "b": "Our first question comes from an analyst at a regional bank.", "label": 0, "category": "unrelated_same_domain"}
+{"a": "Please remain on the line while we connect you.", "b": "The company will hire two hundred engineers next year.", "label": 0, "category": "unrelated_same_domain"}
+{"a": "Payments are due within thirty days of the invoice date.", "b": "The software must be available 99 percent of the time.", "label": 0, "category": "unrelated_same_domain"}
+{"a": "The study enrolled 3,000 patients across nine hospitals.", "b": "Researchers used a transformer model with six layers.", "label": 0, "category": "unrelated_same_domain"}
+{"a": "Gross margin was stable at 41 percent.", "b": "The company closed its plant in Ohio for repairs.", "label": 0, "category": "unrelated_same_domain"}
+{"a": "The museum extended its opening hours.", "b": "Ticket prices for the exhibition were raised by two euros.", "label": 0, "category": "unrelated_same_domain"}
+{"a": "Confidentiality obligations survive for three years.", "b": "Invoices must be paid in euros.", "label": 0, "category": "unrelated_same_domain"}
+{"a": "The city council approved the budget.", "b": "The budget passed the council by a vote of seven to two.", "label": 0, "category": "consistent_elaboration"}
+{"a": "Revenue declined 5 percent in the quarter.", "b": "The decline was driven by weaker demand in Europe.", "label": 0, "category": "consistent_elaboration"}
+{"a": "The company completed its acquisition of a logistics firm.", "b": "The acquired logistics firm has 1,200 employees.", "label": 0, "category": "consistent_elaboration"}
+{"a": "The recall affected 40,000 vehicles.", "b": "Owners of affected vehicles will receive free repairs.", "label": 0, "category": "consistent_elaboration"}
+{"a": "The hospital opened a new cardiology wing.", "b": "The cardiology wing has sixty beds.", "label": 0, "category": "consistent_elaboration"}

@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hcv-sum"
+version = "0.1.0"
+description = "Hierarchical Consistency-Verified Summarization (HCV-Sum) for long documents"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=2.2",
+    "transformers>=4.40",
+    "sentence-transformers>=3.0",
+    "nltk>=3.8",
+    "numpy>=1.24",
+    "pyyaml>=6.0",
+    "sentencepiece>=0.2",
+    "protobuf>=4.0",
+    "psutil>=5.9",     # per-stage peak memory (torch allocations are invisible to tracemalloc)
+    "scipy>=1.10",     # sparse token matrices for the chunked Stage 3 pair selection
+    "pypdf>=4",        # .pdf input (ingestion.py): pure Python, no native build
+    "python-docx>=1.1",  # .docx input (ingestion.py); pulls in lxml (binary wheels on Windows)
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pyflakes>=3"]
+
+[project.scripts]
+hcv-sum = "hcv_sum.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "slow: loads the real Hugging Face models (CPU, minutes). Deselect with -m 'not slow'.",
+]
+# Warnings stay visible by default; only the two TorchScript deprecation messages are ignored,
+# and only when torch.jit._script raises them. See silence_torchscript_deprecation() in
+# src/hcv_sum/cli.py for why this specific warning is safe to suppress and when to remove it.
+filterwarnings = [
+    "default",
+    'ignore:`torch\.jit\.script` is deprecated:FutureWarning:torch\.jit\._script',
+    'ignore:`torch\.jit\.script` is not supported in Python 3\.14\+:FutureWarning:torch\.jit\._script',
+]

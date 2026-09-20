@@ -1,0 +1,95 @@
+# Abstract
+
+This paper presents a hybrid retrieval-augmented framework for early detection of equipment failure in industrial sensor networks. We combine a graph neural network encoder with a temporal attention mechanism to model sensor dependencies across manufacturing lines. Our approach, termed GraphFault, is evaluated on three proprietary industrial datasets spanning automotive, semiconductor, and chemical processing domains. GraphFault achieves a fifteen percent improvement in early-warning lead time compared to the strongest baseline while maintaining a false alarm rate below two percent. We further show that the learned sensor embeddings transfer effectively across plants with different equipment vendors, reducing the cold-start data requirement for new deployments by roughly sixty percent.
+
+# 1. Introduction
+
+Unplanned equipment downtime remains one of the largest sources of lost productivity in industrial manufacturing. Traditional threshold-based alerting systems, which flag a fault only after a sensor reading crosses a fixed boundary, tend to detect problems too late to allow preventive maintenance. In contrast, data-driven early-warning systems attempt to identify subtle precursor patterns across multiple correlated sensors before a hard threshold is crossed.
+
+Recent work has explored graph-based representations of sensor networks, since physical equipment naturally forms a graph structure where nodes represent individual sensors and edges represent physical or causal relationships between them. However, most prior graph-based approaches treat the sensor graph as static, ignoring the fact that dependencies between sensors can shift as equipment ages or as production schedules change.
+
+In this work, we introduce GraphFault, a framework that jointly learns a dynamic sensor graph and a temporal attention mechanism over that graph. Our key contributions are threefold. First, we propose a lightweight graph structure learning module that updates edge weights based on recent sensor correlation patterns without requiring full graph retraining. Second, we introduce a cross-plant transfer mechanism that allows embeddings learned at one manufacturing site to bootstrap early-warning models at a new site with limited historical data. Third, we conduct an extensive empirical evaluation across three industrial domains, demonstrating consistent improvements over strong baselines.
+
+# 2. Related Work
+
+## 2.1 Threshold-Based and Statistical Process Control Methods
+
+Statistical process control methods, dating back to Shewhart control charts, remain widely deployed in industrial settings due to their simplicity and interpretability. These methods flag anomalies when a sensor reading deviates beyond a fixed number of standard deviations from a historical baseline. While effective for catching gross sensor failures, such methods struggle to detect gradual degradation patterns that unfold across multiple correlated sensors simultaneously.
+
+## 2.2 Deep Learning for Time Series Anomaly Detection
+
+More recent approaches apply recurrent neural networks and, increasingly, transformer-based architectures to model temporal dependencies within individual sensor streams. Autoencoder-based methods learn to reconstruct normal operating patterns and flag high reconstruction error as anomalous. These methods generally treat each sensor stream independently or concatenate sensor readings into a single feature vector, which can obscure structural relationships between physically connected components.
+
+## 2.3 Graph Neural Networks for Multivariate Sensor Data
+
+Graph neural networks have gained traction for multivariate time series because they can explicitly encode which sensors are physically or functionally related. Prior work has applied graph attention networks to power grid monitoring and to wind turbine condition monitoring. However, these approaches typically assume the sensor graph structure is known in advance and fixed throughout training and deployment, an assumption we relax in this work.
+
+# 3. Methodology
+
+## 3.1 Problem Formulation
+
+We formulate early fault detection as a sequence-to-sequence prediction problem over a graph. At each time step, every sensor in the manufacturing line produces a reading. Our goal is to predict, for each sensor, the probability that a fault precursor pattern is present, several hours before a hard threshold would be crossed by any conventional alerting system.
+
+## 3.2 Dynamic Graph Structure Learning
+
+Rather than assuming a fixed sensor graph, we learn edge weights as a function of recent windowed correlation between sensor pairs. Specifically, for every pair of sensors within a configurable physical proximity, we compute a rolling correlation coefficient over the past several hours of readings, and use this to initialize and periodically update the adjacency matrix used by the graph attention layers. This allows the model to adapt when, for example, a new piece of equipment is installed that changes causal relationships between existing sensors.
+
+## 3.3 Temporal Attention Mechanism
+
+On top of the dynamic graph, we apply a temporal attention mechanism that allows the model to weight recent time steps differently depending on the current operating regime of the equipment. During steady-state operation, the model learns to weight a longer historical window; during transient states such as startup or shutdown, the model learns to weight only the most recent few time steps.
+
+## 3.4 Cross-Plant Transfer
+
+To support deployment at new manufacturing sites with limited historical fault data, we pretrain the graph encoder on a source plant with abundant historical data, then fine-tune only the final prediction layers at the target plant. We find that the majority of learned sensor embeddings transfer well across plants using similar equipment vendors, substantially reducing the amount of target-plant data required to reach acceptable early-warning performance.
+
+# 4. Experimental Setup
+
+## 4.1 Datasets
+
+We evaluate GraphFault on three proprietary industrial datasets, collected in partnership with manufacturing partners in the automotive, semiconductor, and chemical processing sectors. The automotive dataset spans eighteen months of sensor readings from a stamping line, including two hundred and forty individual sensors. The semiconductor dataset spans twelve months from a wafer fabrication facility, including three hundred and ten sensors. The chemical processing dataset spans twenty-four months from a continuous distillation process, including one hundred and eighty sensors.
+
+## 4.2 Baselines
+
+We compare GraphFault against four baselines. The first is a threshold-based statistical process control baseline. The second is an LSTM autoencoder that treats each sensor independently. The third is a static graph attention network that uses a fixed, manually specified sensor adjacency matrix based on the equipment's physical wiring diagram. The fourth is a transformer-based multivariate time series forecasting model that does not explicitly encode graph structure.
+
+## 4.3 Evaluation Metrics
+
+Our primary evaluation metric is early-warning lead time, defined as the number of hours between when a model first flags an elevated fault probability and when a conventional threshold-based alert would have fired for the same underlying fault. We additionally report false alarm rate, defined as the fraction of flagged warnings that did not precede an actual downtime event within a seventy-two hour window.
+
+# 5. Results
+
+## 5.1 Main Results
+
+Across all three industrial domains, GraphFault achieves the longest average early-warning lead time among all methods evaluated. On the automotive dataset, GraphFault provides an average lead time of eleven point two hours, compared to nine point seven hours for the static graph attention baseline and six point one hours for the LSTM autoencoder. On the semiconductor dataset, the gap is even larger, with GraphFault achieving fourteen point eight hours of lead time compared to eleven point nine hours for the next-best baseline. Across all three domains, GraphFault's false alarm rate remains below two percent, comparable to the static graph attention baseline and substantially better than the LSTM autoencoder, which exhibits a false alarm rate above five percent on the semiconductor dataset.
+
+## 5.2 Ablation Studies
+
+We conduct an ablation study to isolate the contribution of each architectural component. Removing the dynamic graph structure learning module and replacing it with a fixed graph, while keeping the temporal attention mechanism, reduces average lead time by roughly two point one hours across the three datasets, confirming that adaptive graph structure is a meaningful contributor to overall performance. Removing the temporal attention mechanism entirely, while keeping dynamic graph learning, reduces lead time by a smaller but still meaningful zero point nine hours on average.
+
+## 5.3 Cross-Plant Transfer Results
+
+We evaluate cross-plant transfer by pretraining GraphFault on the semiconductor dataset and fine-tuning only the prediction head on a held-out subset of the chemical processing dataset, using progressively smaller amounts of target-domain fine-tuning data. With only twenty percent of the target-domain training data, the transferred model achieves ninety-one percent of the lead time performance of a model trained from scratch on the full target-domain dataset, demonstrating that the majority of useful representational knowledge transfers across plants despite differing equipment vendors and process types.
+
+# 6. Discussion
+
+The consistent improvement in early-warning lead time across three distinct industrial domains suggests that dynamic graph structure learning captures genuinely useful signal beyond what a fixed, expert-specified graph can provide. We note, however, that the magnitude of improvement varies by domain, with the largest gains observed in the semiconductor dataset, which has the highest sensor density among the three datasets evaluated. This suggests dynamic graph learning may provide the greatest benefit in settings with a large number of densely interconnected sensors, where manually specifying an accurate adjacency matrix becomes increasingly impractical.
+
+A limitation of the current cross-plant transfer approach is that it was only evaluated between plants using similar underlying equipment vendors. We have not yet evaluated transfer between plants using substantially different equipment, and we expect transfer performance to degrade in that setting, since the physical relationships between sensors would differ more substantially.
+
+We also note that the automotive dataset, spanning twenty-four months of continuous stamping line operation, provided a particularly stable basis for evaluating long-term drift in sensor correlation patterns, since longer observation windows make gradual equipment aging easier to distinguish from short-term noise.
+
+# 7. Limitations
+
+Our evaluation relies on proprietary industrial datasets that are not publicly releasable due to confidentiality agreements with our manufacturing partners, which limits reproducibility by the broader research community. Additionally, our definition of a ground-truth fault event relies on maintenance logs provided by each manufacturing partner, which may contain inconsistencies in how different maintenance teams categorize and timestamp fault events. Finally, all three evaluated domains involve continuous or semi-continuous manufacturing processes; we have not evaluated GraphFault on discrete batch manufacturing processes, which may exhibit different sensor dependency patterns.
+
+# 8. Conclusion
+
+We presented GraphFault, a dynamic graph neural network framework for early fault detection in industrial sensor networks, and demonstrated consistent improvements in early-warning lead time across three industrial domains while maintaining low false alarm rates. Our cross-plant transfer results suggest that learned sensor representations generalize meaningfully across manufacturing sites, which we believe is a promising direction for reducing the data requirements of deploying early-warning systems at new industrial sites.
+
+# Appendix A: Implementation Details
+
+All models were implemented using standard deep learning frameworks and trained on a cluster of graphics processing units. The graph attention layers use four attention heads with a hidden dimension of one hundred and twenty-eight. The temporal attention mechanism operates over a maximum window of forty-eight hours of historical sensor readings. All models were trained using the Adam optimizer with an initial learning rate of one times ten to the negative fourth, decayed according to a cosine annealing schedule over the course of training.
+
+# Appendix B: Additional Dataset Statistics
+
+The automotive dataset contains two hundred and forty sensors, as described in Section 4.1. Of these, approximately sixty sensors are temperature sensors, seventy are vibration sensors, and the remainder are a mix of pressure, current, and positional sensors. The semiconductor dataset's three hundred and ten sensors are predominantly particle count and gas flow sensors, reflecting the cleanroom environment of wafer fabrication. The chemical processing dataset's one hundred and eighty sensors are predominantly temperature, pressure, and flow rate sensors distributed along the distillation column.
